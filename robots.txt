@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.bucheon-chuljangmassage.example.com/sitemap.xml
+Sitemap: https://bucheon-massage-88.pages.dev/sitemap.xml
