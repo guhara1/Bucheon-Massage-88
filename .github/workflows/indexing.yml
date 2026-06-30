@@ -4,11 +4,13 @@ name: Indexing notify
 # - IndexNow: 빙·네이버 등(키 불필요, 사이트 루트의 키 파일로 자동 검증)
 # - Google Indexing API: 선택. 리포지토리 Secret 에 GCP_SA_KEY 가 있으면 함께 실행.
 on:
+  # 기본 배포 브랜치에 push 될 때 색인 통보를 실행한다.
   push:
-    branches: [main]
+    branches: [main, claude/affectionate-darwin-dngmza]
     paths:
       - 'content/**'
       - 'build.py'
+      - 'assets/**'
   workflow_dispatch:
 
 permissions:
