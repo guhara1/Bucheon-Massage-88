@@ -10,6 +10,7 @@ content/ 패키지의 페이지 정의를 읽어 정적 HTML을 생성한다.
 """
 import datetime
 import html
+import json
 import os
 import re
 import shutil
@@ -19,8 +20,9 @@ from email.utils import format_datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from content import PAGES
-from content.site import (BASE_URL, BRAND, BRAND_MARK, INDEXNOW_KEY, NAV, PHONE,
-                          PHONE_DISPLAY, SERVICE_AREA, TAGLINE)
+from content.site import (BASE_URL, BRAND, BRAND_MARK, INDEXNOW_KEY, NAV,
+                          NAVER_VERIFY, PHONE, PHONE_DISPLAY, RATING, REVIEWS,
+                          SERVICE_AREA, TAGLINE)
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MIN_INDEX_CHARS = 2000
@@ -107,6 +109,219 @@ def render_toc(items) -> str:
     )
 
 
+# ── 구조화 데이터(JSON-LD) ────────────────────────────────────────────
+# 메인부터 모든 지역·역·안내 페이지에 동일한 사업자 정보와 평점·후기,
+# 빵부스러기, 서비스/요금, FAQ 스키마를 자동으로 주입한다.
+_OG_IMAGE = BASE_URL.rstrip("/") + "/assets/og-image.png"
+_BIZ_ID = BASE_URL.rstrip("/") + "/#business"
+_AREA = {"@type": "AdministrativeArea", "name": "경기도 부천시"}
+
+
+def _clean_text(s: str) -> str:
+    return html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s))).strip()
+
+
+def _faq_pairs(body: str):
+    """본문에 실제로 노출된 FAQ(.faq-item)만 추출해 스키마로 옮긴다(허위 생성 없음)."""
+    pairs = []
+    for q, a in re.findall(
+        r'<div class="faq-item">\s*<h3>(.*?)</h3>\s*<p>(.*?)</p>', body, flags=re.S
+    ):
+        q, a = _clean_text(q), _clean_text(a)
+        if q and a:
+            pairs.append((q, a))
+    return pairs
+
+
+def _aggregate_rating() -> dict:
+    return {
+        "@type": "AggregateRating",
+        "ratingValue": RATING["value"],
+        "reviewCount": RATING["count"],
+        "bestRating": RATING["best"],
+        "worstRating": RATING.get("worst", "1"),
+    }
+
+
+def _review_nodes():
+    return [
+        {
+            "@type": "Review",
+            "author": {"@type": "Person", "name": r["author"]},
+            "datePublished": r["date"],
+            "reviewRating": {
+                "@type": "Rating",
+                "ratingValue": r["rating"],
+                "bestRating": RATING["best"],
+                "worstRating": RATING.get("worst", "1"),
+            },
+            "reviewBody": r["body"],
+        }
+        for r in REVIEWS
+    ]
+
+
+def _business_node(canonical: str) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "HealthAndBeautyBusiness",
+        "@id": _BIZ_ID,
+        "name": BRAND,
+        "image": _OG_IMAGE,
+        "url": canonical,
+        "telephone": PHONE,
+        "priceRange": "90,000원~180,000원",
+        "currenciesAccepted": "KRW",
+        "openingHours": "Mo-Su 00:00-24:00",
+        "areaServed": _AREA,
+        "description": "부천 전지역 방문 출장마사지·홈타이 예약 안내",
+        "aggregateRating": _aggregate_rating(),
+        "review": _review_nodes(),
+    }
+
+
+def _service_node(canonical: str, name: str) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "name": name,
+        "serviceType": "출장마사지·홈타이 방문 관리",
+        "provider": {"@id": _BIZ_ID},
+        "areaServed": _AREA,
+        "url": canonical,
+        "aggregateRating": _aggregate_rating(),
+        "offers": [
+            {"@type": "Offer", "name": "60분 코스", "price": "90000", "priceCurrency": "KRW"},
+            {"@type": "Offer", "name": "90분 코스", "price": "150000", "priceCurrency": "KRW"},
+            {"@type": "Offer", "name": "120분 코스", "price": "180000", "priceCurrency": "KRW"},
+        ],
+    }
+
+
+def _breadcrumb_node(crumbs) -> dict:
+    items = [{"@type": "ListItem", "position": 1, "name": "홈", "item": _BASE + "/"}]
+    for i, (label, href) in enumerate(crumbs, start=2):
+        node = {"@type": "ListItem", "position": i, "name": _clean_text(label)}
+        if href:
+            node["item"] = _BASE + href
+        items.append(node)
+    return {"@context": "https://schema.org", "@type": "BreadcrumbList",
+            "itemListElement": items}
+
+
+def _faq_node(pairs) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {"@type": "Question", "name": q,
+             "acceptedAnswer": {"@type": "Answer", "text": a}}
+            for q, a in pairs
+        ],
+    }
+
+
+def render_jsonld(page: dict, canonical: str, noindex: bool) -> str:
+    crumbs = page.get("breadcrumb") or []
+    blocks = []
+    if page["path"] == "":
+        blocks.append({"@context": "https://schema.org", "@type": "WebSite",
+                       "name": BRAND, "url": _BASE + "/"})
+    if crumbs:
+        blocks.append(_breadcrumb_node(crumbs))
+    # 색인 대상 페이지에만 사업자/평점/후기·서비스·FAQ 스키마를 싣는다.
+    if not noindex:
+        blocks.append(_business_node(canonical))
+        blocks.append(_service_node(canonical, page["title"]))
+        pairs = _faq_pairs(page["body"])
+        if pairs:
+            blocks.append(_faq_node(pairs))
+    out = [
+        '<script type="application/ld+json">\n'
+        + json.dumps(b, ensure_ascii=False, indent=2)
+        + "\n</script>"
+        for b in blocks
+    ]
+    return ("\n".join(out) + "\n") if out else ""
+
+
+# ── 롱테일 내부링크 블록 ───────────────────────────────────────────────
+# 모든 페이지 하단에 지역·역세권·이용안내를 롱테일 앵커로 교차 연결한다.
+def _short_label(page: dict) -> str:
+    crumbs = page.get("breadcrumb") or []
+    return _clean_text(crumbs[-1][0]) if crumbs else BRAND
+
+
+_WONMI_DONGS, _SOSA_DONGS, _OJEONG_DONGS = [], [], []
+for _p in PAGES:
+    _path = _p["path"]
+    _entry = ("/" + _path, _short_label(_p))
+    if _path.startswith("bucheon/wonmi/"):
+        _WONMI_DONGS.append(_entry)
+    elif _path.startswith("bucheon/sosa/"):
+        _SOSA_DONGS.append(_entry)
+    elif _path.startswith("bucheon/ojeong/"):
+        _OJEONG_DONGS.append(_entry)
+
+_DISTRICTS = [
+    ("/bucheon/wonmi-gu-chuljangmassage/", "원미구"),
+    ("/bucheon/sosa-gu-chuljangmassage/", "소사구"),
+    ("/bucheon/ojeong-gu-chuljangmassage/", "오정구"),
+]
+_STATIONS = []
+for _label, _href, _children in NAV:
+    if _href == "/bucheon/stations/":
+        _STATIONS = [(h, l) for l, h in _children if h != "/bucheon/stations/"]
+_INFO = [
+    ("/massage/", "부천 출장마사지 안내"),
+    ("/hometai/", "부천 홈타이 안내"),
+    ("/reservation/", "예약 방법·가능 시간"),
+    ("/guide/", "처음 이용 가이드"),
+    ("/bucheon/", "행정구별 전체 안내"),
+    ("/bucheon/stations/", "역세권별 전체 안내"),
+]
+
+
+def _ll_items(items, suffix, current, limit=None):
+    out = []
+    for href, label in items:
+        if href == current:
+            continue
+        anchor = f"{label} {suffix}" if suffix else label
+        out.append(f'<li><a href="{href}">{anchor}</a></li>')
+        if limit and len(out) >= limit:
+            break
+    return "".join(out)
+
+
+def render_related(page: dict) -> str:
+    path = page["path"]
+    current = "/" + path if path else "/"
+
+    if path.startswith("bucheon/wonmi/"):
+        col1_title, col1 = "원미구 동네별 안내", _ll_items(_WONMI_DONGS, "출장마사지", current)
+    elif path.startswith("bucheon/sosa/"):
+        col1_title, col1 = "소사구 동네별 안내", _ll_items(_SOSA_DONGS, "출장마사지", current)
+    elif path.startswith("bucheon/ojeong/"):
+        col1_title, col1 = "오정구 동네별 안내", _ll_items(_OJEONG_DONGS, "출장마사지", current)
+    else:
+        col1_title, col1 = "부천 행정구별 안내", _ll_items(_DISTRICTS, "출장마사지·홈타이", current)
+
+    col2 = _ll_items(_STATIONS, "출장마사지", current, limit=8)
+    col3 = _ll_items(_INFO, "", current, limit=6)
+
+    return f"""<section class="related-links" aria-label="관련 안내">
+<p class="related-title">부천 지역별 출장마사지·홈타이 안내</p>
+<p class="related-lead">찾으시는 동네나 가까운 역, 이용 방법을 골라 바로 확인하세요.</p>
+<div class="related-cols">
+  <nav class="related-col" aria-label="{col1_title}"><p class="related-h">{col1_title}</p><ul>{col1}</ul></nav>
+  <nav class="related-col" aria-label="주요 역세권 안내"><p class="related-h">주요 역세권 안내</p><ul>{col2}</ul></nav>
+  <nav class="related-col" aria-label="이용 안내"><p class="related-h">이용 안내</p><ul>{col3}</ul></nav>
+</div>
+</section>
+"""
+
+
 def render_page(page: dict) -> str:
     path = page["path"]
     title = page["title"]
@@ -126,6 +341,15 @@ def render_page(page: dict) -> str:
     )
     canonical = BASE_URL.rstrip("/") + "/" + path
 
+    # 네이버 소유확인 태그는 메인 페이지 <head> 에만 출력한다.
+    if path == "":
+        extra_head = (
+            f'<meta name="naver-site-verification" content="{NAVER_VERIFY}">\n'
+            + extra_head
+        )
+    # 전 페이지 공통 구조화 데이터(JSON-LD) 주입.
+    extra_head = extra_head + render_jsonld(page, canonical, noindex)
+
     # 히어로가 있는 페이지(메인)는 H1을 히어로 안에서 출력한다.
     if hero:
         page_head = hero
@@ -135,6 +359,7 @@ def render_page(page: dict) -> str:
     h1_html = "" if hero else f"<h1>{h1}</h1>"
 
     body, toc_items = inject_toc(body)
+    body = body + render_related(page)
     toc_html = render_toc(toc_items)
     layout_cls = "page-layout has-toc" if toc_html else "page-layout"
 

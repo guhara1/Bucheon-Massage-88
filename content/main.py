@@ -1,73 +1,7 @@
 # 메인 페이지 — 허브 역할. 행정구를 중간 허브로 세우고 대표 동·역세권으로 연결한다.
-from .site import BASE_URL, BRAND, PHONE, PHONE_DISPLAY
+# 스키마(JSON-LD)·네이버 소유확인 태그는 build.py 에서 전 페이지 공통으로 자동 주입한다.
+from .site import BRAND, PHONE, PHONE_DISPLAY
 from .pricing import PRICING
-
-_JSONLD = f"""<meta name="naver-site-verification" content="d72b9347bb45636527b3fc7a291a8c7fe69e5925">
-<script type="application/ld+json">
-{{
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "{BRAND}",
-  "telephone": "{PHONE}",
-  "url": "{BASE_URL}/",
-  "image": "{BASE_URL}/assets/og-image.png",
-  "description": "부천 전지역 방문 출장마사지·홈타이 예약 안내",
-  "areaServed": {{
-    "@type": "AdministrativeArea",
-    "name": "경기도 부천시"
-  }}
-}}
-</script>
-<script type="application/ld+json">
-{{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "부천 출장마사지·부천시 홈타이 지역별 안내",
-  "url": "{BASE_URL}/",
-  "description": "부천 출장마사지·홈타이 예약 전 원미구, 소사구, 오정구 생활권을 확인하세요."
-}}
-</script>
-<script type="application/ld+json">
-{{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {{
-      "@type": "Question",
-      "name": "부천 전지역 방문이 가능한가요?",
-      "acceptedAnswer": {{
-        "@type": "Answer",
-        "text": "예약 시간, 정확한 위치, 배정 상황에 따라 가능 여부가 달라집니다. 행정구별 안내에서 원미구, 소사구, 오정구 생활권을 확인할 수 있습니다."
-      }}
-    }},
-    {{
-      "@type": "Question",
-      "name": "부천역이나 상동역 근처도 가능한가요?",
-      "acceptedAnswer": {{
-        "@type": "Answer",
-        "text": "주요 역세권은 역 상세 페이지에서 주변 생활권과 함께 안내합니다. 정확한 가능 여부는 예약 시 위치를 기준으로 확인합니다."
-      }}
-    }},
-    {{
-      "@type": "Question",
-      "name": "중1동과 중2동은 왜 따로 없나요?",
-      "acceptedAnswer": {{
-        "@type": "Answer",
-        "text": "숫자가 붙은 행정동은 중동, 상동, 송내동처럼 대표 동 페이지에서 통합 안내하여 중복 페이지 위험을 줄입니다."
-      }}
-    }},
-    {{
-      "@type": "Question",
-      "name": "홈타이도 같은 곳에서 예약하나요?",
-      "acceptedAnswer": {{
-        "@type": "Answer",
-        "text": "네, 출장마사지와 홈타이는 같은 예약 전화로 안내합니다. 홈타이 안내 페이지에서 진행 방식을 확인할 수 있습니다."
-      }}
-    }}
-  ]
-}}
-</script>
-"""
 
 _HERO = f"""<section class="hero">
   <div class="hero-inner">
@@ -174,7 +108,6 @@ PAGE = {
     "desc": "부천 출장마사지·홈타이 예약 전 원미구, 소사구, 오정구 생활권을 확인하세요.",
     "h1": "부천 출장마사지 · 부천시 홈타이 지역별 안내",
     "body": _BODY,
-    "extra_head": _JSONLD,
     "breadcrumb": [],
     "hero": _HERO,
 }

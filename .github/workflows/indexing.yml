@@ -27,8 +27,8 @@ jobs:
       - name: Build (sitemap·feed·urls.txt 생성)
         run: python3 build.py
 
-      - name: Cloudflare Pages 배포 대기
-        run: sleep 90   # CF Pages 배포가 끝나야 IndexNow 키 검증이 통과합니다.
+      - name: Netlify 배포 대기
+        run: sleep 90   # Netlify 배포가 끝나야 IndexNow 키 검증이 통과합니다.
 
       - name: IndexNow 통보 (Bing·Naver)
         run: python3 tools/indexnow_submit.py

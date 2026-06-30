@@ -1,6 +1,6 @@
 # 색인(인덱싱) 가이드 — 네이버·구글·빙 빠른 등록
 
-도메인: **https://bucheon-massage-88.pages.dev/**
+도메인: **https://bucheon-massage-88.netlify.app/**
 
 빌드(`python3 build.py`) 시 자동 생성되는 색인 자산:
 
@@ -18,10 +18,10 @@
 ## 1. 네이버 서치어드바이저 (가장 중요)
 
 1. https://searchadvisor.naver.com → **웹마스터 도구**에 사이트 등록
-   `https://bucheon-massage-88.pages.dev/`
+   `https://bucheon-massage-88.netlify.app/`
 2. **소유확인**: 「HTML 태그」 방식 선택 → 메인 페이지에 이미 아래 태그가 들어 있습니다.
    ```html
-   <meta name="naver-site-verification" content="d72b9347bb45636527b3fc7a291a8c7fe69e5925" />
+   <meta name="naver-site-verification" content="5f1e759396e2a7c10bf4557f82cc33d0837fb998" />
    ```
    → 배포 확인 후 "소유확인" 버튼만 누르면 됩니다.
 3. **요청 → 사이트맵 제출**: `sitemap.xml`
@@ -31,7 +31,7 @@
 ## 2. 구글 서치 콘솔
 
 1. https://search.google.com/search-console 에서 **URL 접두어** 속성으로
-   `https://bucheon-massage-88.pages.dev/` 추가.
+   `https://bucheon-massage-88.netlify.app/` 추가.
 2. 소유확인: 「HTML 태그」 방식의 `google-site-verification` 메타를 받으면
    `content/main.py` 의 `_JSONLD` 상단(네이버 태그 옆)에 한 줄 추가 후 `python3 build.py` →
    재배포 → 확인.
@@ -46,7 +46,7 @@
   ```bash
   python3 build.py                      # urls.txt 갱신
   python3 tools/indexnow_submit.py      # 전체 URL 통보
-  python3 tools/indexnow_submit.py https://bucheon-massage-88.pages.dev/bucheon/wonmi/jung-dong-chuljangmassage/  # 특정 URL만
+  python3 tools/indexnow_submit.py https://bucheon-massage-88.netlify.app/bucheon/wonmi/jung-dong-chuljangmassage/  # 특정 URL만
   ```
 - 응답 200/202 = 정상 접수. 403 = 키 파일 미배포(배포 후 재시도).
 

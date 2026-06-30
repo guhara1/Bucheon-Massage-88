@@ -407,6 +407,43 @@ strong { color: var(--gold-soft); font-weight: 700; }
 }
 .cta .cta-phone:hover { filter: brightness(1.07); color: #120e06; }
 
+/* 롱테일 내부링크 블록 — 본문 하단 지역·역·안내 교차 연결 */
+.page-content section.related-links {
+  margin: 40px 0 0; padding: 30px 28px 24px;
+  background:
+    radial-gradient(ellipse 70% 130% at 0% -20%, rgba(200, 162, 94, 0.08), transparent 60%),
+    linear-gradient(180deg, #0c1424, #0a1120);
+  border: 1px solid var(--line-gold); border-radius: 16px;
+  counter-increment: none;
+}
+.related-title {
+  font-family: var(--serif); font-weight: 700; font-size: 1.25rem;
+  color: var(--gold-soft); letter-spacing: 0.01em;
+}
+.related-title::before { content: "◆ "; color: var(--gold); font-size: 0.8em; }
+.related-lead { color: var(--text-dim); font-size: 0.93rem; margin: 6px 0 20px; }
+.related-cols {
+  display: grid; gap: 22px 28px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.related-col .related-h {
+  font-weight: 700; color: var(--text); font-size: 0.97rem;
+  padding-bottom: 9px; margin-bottom: 9px;
+  border-bottom: 1px solid var(--line-gold);
+}
+.related-col ul { list-style: none; margin: 0; padding: 0; }
+.related-col li { margin: 0; }
+.related-col li a {
+  display: block; padding: 7px 10px; border-radius: 8px;
+  color: var(--text-dim); font-size: 0.9rem; line-height: 1.5;
+  transition: 0.15s;
+}
+.related-col li a::before { content: "› "; color: var(--gold); }
+.related-col li a:hover {
+  background: var(--panel-2); color: var(--gold-soft);
+  transform: translateX(2px);
+}
+
 /* 요금 카드 */
 .pricing-lead { color: var(--text-dim); }
 .price-grid {
